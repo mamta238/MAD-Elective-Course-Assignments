@@ -25,12 +25,12 @@ func NewMongoRepository(mongoSession *mgo.Session, db string) *MongoRepository {
 
 //Reader Method:Find a Restaurant
 func (r *MongoRepository) Get(id domain.ID) (*domain.Restaurant, error) {
-	//fmt.Println(id)
+
 	result := domain.Restaurant{}
 	session := r.mongoSession.Clone()
 	defer session.Close()
 	coll := session.DB(r.db).C(collectionName)
-	err := coll.Find(bson.M{"_id": bson.ObjectIdHex(string(id))}).One(&result)
+	err := coll.Find(bson.M{"_id": bson.ObjectId(id)}).One(&result)
 	switch err {
 	case nil:
 		return &result, nil
@@ -48,7 +48,7 @@ func (r *MongoRepository) FindByName(name string) ([] *domain.Restaurant, error)
 	session := r.mongoSession.Clone()
 	defer session.Close()
 	coll := session.DB(r.db).C(collectionName)
-	err := coll.Find(bson.M{"name": name}).All(&result)
+	err := coll.Find(bson.M{"name": bson.RegEx{name , ""} }).All(&result)
 	switch err {
 	case nil:
 		return result, nil
@@ -83,17 +83,20 @@ func (r *MongoRepository) GetAll() ([] *domain.Restaurant, error){
 
 //Writer method:Store a Restaurantrecord
 func (r *MongoRepository) Store(b *domain.Restaurant) (domain.ID, error) {
+
+	
 	session := r.mongoSession.Clone()
 	defer session.Close()
 	coll := session.DB(r.db).C(collectionName)
-	if domain.ID(0) == b.DBID {
+	
+	if  "" == b.DBID {
 		b.DBID = domain.NewID()
+		fmt.Println(b)
 	}
 
 	_, err := coll.UpsertId(b.DBID, b)
 
 	if err != nil {
-		fmt.Println("in if")
 		return domain.ID(0), err
 	}
 	return b.DBID, nil
@@ -105,9 +108,8 @@ func (r *MongoRepository) Delete(id domain.ID) error{
 	session := r.mongoSession.Clone()
 	defer session.Close()
 	coll := session.DB(r.db).C(collectionName)
-	err := coll.Remove(bson.M{"_id":bson.ObjectIdHex(string(id))})
+	err := coll.Remove(bson.M{"_id": bson.ObjectId(id)})
 	return err		
-
 }
 
 //Filter Method:Filter restaurants with given food type 
@@ -151,4 +153,23 @@ func (r *MongoRepository) FindByTypeOfPostCode(postcode string) ([] *domain.Rest
 		default :
 			return nil,err		
 	}	
+}
+
+
+func (r *MongoRepository) Search(query string) ([] *domain.Restaurant,error){
+	
+	
+	result := []*domain.Restaurant{} 
+	session := r.mongoSession.Clone()
+	defer session.Close()
+	coll := session.DB(r.db).C(collectionName)
+	
+	index := mgo.Index{ Key : []string					{"$text:name","$text:address","$text:addressLine2","$text:url","$text:outcode","$text:postcode","$text:typeOfFood"},
+	}	
+	coll.EnsureIndex(index)
+	
+	err := coll.Find(bson.M{"$text":bson.M{"$search":query}}).All(&result)
+	
+	return result,err
+	
 }
