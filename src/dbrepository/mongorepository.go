@@ -155,6 +155,7 @@ func (r *MongoRepository) FindByTypeOfPostCode(postcode string) ([] *domain.Rest
 	}	
 }
 
+//Filter Method: Search on all string type(Using text search by creating index) 
 
 func (r *MongoRepository) Search(query string) ([] *domain.Restaurant,error){
 	
