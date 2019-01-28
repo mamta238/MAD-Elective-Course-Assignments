@@ -16,6 +16,7 @@ func main() {
 	//pass mongohost through the environment
 	dbname, prompt, guidelines ,options := aux.Init()
 	
+	
 	mongoSession, _ := mongoutils.RegisterMongoSession(os.Getenv("MONGO_HOST"))
 	repoAccess := dbrepo.NewMongoRepository(mongoSession, dbname)
 
@@ -23,32 +24,62 @@ func main() {
 	
 	fmt.Println(guidelines)   
 	
+	//For Command line interface
 	for{
+	
 		fmt.Print("\n",prompt) 
 		
 		entry, _ := reader.ReadString('\n')
-		entry = strings.Trim(entry,"\n")
-		option := strings.Split(entry," ")
 		
-		fmt.Println(option)	
+		entry = strings.TrimFunc(entry, func(c rune) bool {
+			return c==rune('\n') || c==rune(' ') 
+		})
 		
-		switch strings.Trim(option[0],"->") {  
+		//Command pattern : command --option --value 
+		//More arguments will result in Invalid command
+		
+		opt1 := strings.SplitN(entry, " " ,2)
+		
+		
+		for i:=0 ; i<len(opt1) ; i++{
+			opt1[i] = strings.Trim(opt1[i]," ")
+		}
+		
+		option := opt1[0]
+		value1,value2 := "",""	
+		
+		if len(opt1) > 1 {
+			opt2 := strings.SplitN(opt1[1], " " ,2)
+		
+			for i:=0 ; i<len(opt2) ; i++{
+				opt2[i] = strings.Trim(opt2[i]," ")
+			}
+			value1 = opt2[0]
+			
+			if len(opt2)>1{
+				value2 = opt2[1]
+		}		
+		}
+		
+		switch option {  
 								
-			case "find"   :  aux.FindAccordingToOption(repoAccess,option[1],option[2])
+			//functions from aux package
+								
+			case "find"   :  aux.FindAccordingToOption(repoAccess,value1,value2)
 						     	
 			case "list"   :  aux.ListAllRestaurants(repoAccess)
 			
 			case "store"  :  aux.StoreRecord(repoAccess)
 			
-			case "delete" :  aux.DeleteRecord(repoAccess,option[2])
+			case "delete" :  aux.DeleteRecord(repoAccess,value2)
 			
-			case "count"  :  aux.CountAccordingToOption(repoAccess,option[1],option[2])
+			case "count"  :  aux.CountAccordingToOption(repoAccess,value1,value2)
 			
-			case "search" :  aux.SearchOnKeyWord(repoAccess,(option[1]))
+			case "search" :  aux.SearchOnKeyWord(repoAccess,value1)
 			
-			case "o" 	  :  fmt.Println(options)
+			case "-o" 	  :  fmt.Println(options)
 			
-			case "q"	  :  fmt.Println("\nExiting----")
+			case "-q"	  :  fmt.Println("\nExiting----")
 							 os.Exit(0)	
 					
 			default 	  :  fmt.Println("\n\tInvalid Option!\n",guidelines)
